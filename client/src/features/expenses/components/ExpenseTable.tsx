@@ -32,35 +32,44 @@ const ExpenseTable = ({ expenses, onDelete, onEdit }: ExpenseTableProps) => {
               </td>
             </tr>
           ) : (
-            expenses.map((expense) => (
-              <tr key={expense.id} className="border-t border-slate-800">
-                <td className="px-4 py-3">{expense.title}</td>
+            expenses.map((expense, index) => {
+              const expenseId = expense.id ?? expense._id;
+              const rowKey = expenseId ?? `${index}`;
 
-                <td className="px-4 py-3">{expense.category}</td>
+              return (
+                <tr key={rowKey} className="border-t border-slate-800">
+                  <td className="px-4 py-3">{expense.title}</td>
 
-                <td className="px-4 py-3">₹{expense.amount}</td>
+                  <td className="px-4 py-3">{expense.category}</td>
 
-                <td className="px-4 py-3">{expense.date}</td>
+                  <td className="px-4 py-3">₹{expense.amount}</td>
 
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onEdit(expense)}
-                      className="rounded-lg bg-yellow-600 px-3 py-1 text-sm"
-                    >
-                      Edit
-                    </button>
+                  <td className="px-4 py-3">{expense.date}</td>
 
-                    <button
-                      onClick={() => onDelete(expense.id)}
-                      className="rounded-lg bg-red-600 px-3 py-1 text-sm"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onEdit(expense)}
+                        className="rounded-lg bg-yellow-600 px-3 py-1 text-sm"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (expenseId) {
+                            onDelete(expenseId);
+                          }
+                        }}
+                        className="rounded-lg bg-red-600 px-3 py-1 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>
