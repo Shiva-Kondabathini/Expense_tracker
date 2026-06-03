@@ -85,4 +85,53 @@ export const sendVerificationEmail = async (
   return { sent: true, previewUrl };
 };
 
-export default { sendVerificationEmail };
+export const sendResetPasswordEmail = async (
+  to: string,
+  token: string,
+): Promise<{ sent: boolean; previewUrl?: string }> => {
+  let transporter: Mail | null = createSmtpTransporter();
+  let previewUrl: string | undefined;
+
+  if (!transporter) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn("SMTP not configured - skipping email send");
+      return { sent: false };
+    }
+
+    transporter = await createEtherealTransporter();
+  }
+
+  const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
+
+  const resetUrl = `${frontend}/reset-password/${token}`;
+
+  const from = process.env.FROM_EMAIL || "noreply@example.com";
+
+  const activeTransporter = transporter;
+  if (!activeTransporter) {
+    return { sent: false };
+  }
+
+  const info = await activeTransporter.sendMail({
+    from,
+    to,
+    subject: "Reset your password",
+    html: `
+      <p>You requested to reset your password. Please click the link below:</p>
+      <p><a href="${resetUrl}">Reset Password</a></p>
+      <p>If the link doesn't work, copy and paste this URL into your browser:</p>
+      <p>${resetUrl}</p>
+      <p>This link will expire in 1 hour.</p>
+      <p>If you did not request this, please ignore this email.</p>
+    `,
+  });
+
+  const testUrl = nodemailer.getTestMessageUrl(info);
+  if (testUrl) {
+    previewUrl = testUrl;
+  }
+
+  return { sent: true, previewUrl };
+};
+
+export default { sendVerificationEmail, sendResetPasswordEmail };

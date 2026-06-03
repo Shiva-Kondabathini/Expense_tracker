@@ -22,3 +22,25 @@ export const registerUser = async (payload: RegisterPayload) => {
 
   return response.data;
 };
+
+interface ForgotPasswordPayload {
+  email: string;
+}
+
+export const forgotPassword = async (payload: ForgotPasswordPayload) => {
+  const response = await api.post("/auth/forgot-password", payload);
+
+  return response.data;
+};
+
+interface ResetPasswordPayload {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export const resetPassword = async (payload: ResetPasswordPayload) => {
+  const response = await api.post("/auth/reset-password", payload);
+
+  return response.data;
+};

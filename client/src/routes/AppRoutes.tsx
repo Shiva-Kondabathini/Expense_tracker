@@ -2,6 +2,8 @@ import { Route, Routes } from "react-router-dom";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import RegisterPage from "@/features/auth/pages/RegisterPage";
 import VerifyPage from "@/features/auth/pages/VerifyPage";
+import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 import MainLayout from "@/layouts/MainLayout";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import ExpensesPage from "@/features/expenses/pages/ExpensesPage";
@@ -36,6 +38,24 @@ export const AppRoutes = () => {
           element={
             <PublicRoute>
               <VerifyPage />
+            </PublicRoute>
+          }
+        />
+
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <ForgotPasswordPage />
+            </PublicRoute>
+          }
+        />
+
+        <Route
+          path="/reset-password/:token"
+          element={
+            <PublicRoute>
+              <ResetPasswordPage />
             </PublicRoute>
           }
         />
