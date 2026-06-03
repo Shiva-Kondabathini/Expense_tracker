@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 
 import { FiHome, FiDollarSign, FiBarChart2 } from "react-icons/fi";
 
-const menus = [
+export const menus = [
   {
     label: "Dashboard",
     path: "/",
@@ -23,7 +23,7 @@ const menus = [
 
 const Sidebar = () => {
   return (
-    <aside className="w-64 border-r border-slate-800 bg-slate-950">
+    <aside className="hidden md:block w-64 border-r border-slate-800 bg-slate-950">
       <div className="p-6 text-2xl font-bold">NaKharch</div>
 
       <nav className="flex flex-col gap-2 p-4">

@@ -6,6 +6,7 @@ import MonthlyExpenseChart from "@/shared/components/charts/MonthlyExpenseChart"
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { selectExpenses } from "@/features/expenses/selectors";
 import { fetchExpenses } from "@/features/expenses/expensesSlice";
+import { formatCurrency } from "@/shared/utils/currency";
 
 const MONTHS = [
   "Jan",
@@ -21,6 +22,14 @@ const MONTHS = [
   "Nov",
   "Dec",
 ];
+
+type MonthReport = {
+  month: string;
+  amount: number;
+  key: string;
+  year: number;
+  monthIndex: number;
+};
 
 const AnalyticsPage = () => {
   const dispatch = useAppDispatch();
@@ -89,64 +98,80 @@ const AnalyticsPage = () => {
       .sort((a, b) => b.total - a.total);
   }, [expenses, totalExpenses]);
 
-  const monthlyData = useMemo(() => {
-    const now = new Date();
-    const window = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-      return {
-        month: `${MONTHS[date.getMonth()]} ${date.getFullYear()}`,
-        amount: 0,
-        key: `${date.getFullYear()}-${date.getMonth()}`,
-        year: date.getFullYear(),
-        monthIndex: date.getMonth(),
-      };
+  const monthReports = useMemo(() => {
+    const grouped = expenses.reduce<Record<string, MonthReport>>(
+      (acc, expense) => {
+        const date = new Date(expense.date);
+        if (Number.isNaN(date.getTime())) return acc;
+
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        if (!acc[key]) {
+          acc[key] = {
+            month: `${MONTHS[date.getMonth()]} ${date.getFullYear()}`,
+            amount: 0,
+            key,
+            year: date.getFullYear(),
+            monthIndex: date.getMonth(),
+          };
+        }
+
+        acc[key].amount += expense.amount;
+        return acc;
+      },
+      {},
+    );
+
+    return Object.values(grouped).sort((a, b) => {
+      if (a.year === b.year) return a.monthIndex - b.monthIndex;
+      return a.year - b.year;
     });
-
-    expenses.forEach((expense) => {
-      const date = new Date(expense.date);
-      if (Number.isNaN(date.getTime())) return;
-
-      const item = window.find(
-        (monthItem) =>
-          monthItem.key === `${date.getFullYear()}-${date.getMonth()}`,
-      );
-
-      if (item) {
-        item.amount += expense.amount;
-      }
-    });
-
-    return window.map(({ month, amount, key, year, monthIndex }) => ({
-      month,
-      amount,
-      key,
-      year,
-      monthIndex,
-    }));
   }, [expenses]);
 
-  const monthReports = useMemo(
+  const availableYears = useMemo(
     () =>
-      monthlyData.map((item, index) => {
-        const previousAmount = monthlyData[index - 1]?.amount ?? 0;
-        const change = previousAmount
-          ? Math.round(((item.amount - previousAmount) / previousAmount) * 100)
-          : 0;
-
-        return {
-          ...item,
-          change,
-          share: totalExpenses ? (item.amount / totalExpenses) * 100 : 0,
-        };
-      }),
-    [monthlyData, totalExpenses],
+      Array.from(new Set(monthReports.map((item) => item.year)))
+        .sort((a, b) => b - a)
+        .map((year) => year.toString()),
+    [monthReports],
   );
 
-  const defaultMonthData = monthReports[monthReports.length - 1];
-  const effectiveSelectedYear =
-    selectedYear || defaultMonthData?.year.toString() || "";
+  const monthsByYear = useMemo(
+    () =>
+      monthReports.reduce<Record<string, MonthReport[]>>((acc, item) => {
+        const yearKey = item.year.toString();
+        if (!acc[yearKey]) acc[yearKey] = [];
+        acc[yearKey].push(item);
+        return acc;
+      }, {}),
+    [monthReports],
+  );
+
+  const effectiveSelectedYear = selectedYear || availableYears[0] || "";
+  const monthOptions = monthsByYear[effectiveSelectedYear] || [];
   const effectiveSelectedMonthKey =
-    selectedMonthKey || defaultMonthData?.key || "";
+    selectedMonthKey || monthOptions[monthOptions.length - 1]?.key || "";
+  const effectiveMonthLabel =
+    monthOptions.find((item) => item.key === effectiveSelectedMonthKey)
+      ?.month ?? "selected month";
+
+  const yearlyChartData = useMemo(() => {
+    const year = Number(effectiveSelectedYear);
+    if (!year || !availableYears.includes(effectiveSelectedYear)) return [];
+
+    const baseline = Array.from({ length: 12 }, (_, index) => ({
+      month: `${MONTHS[index]} ${year}`,
+      amount: 0,
+      key: `${year}-${index}`,
+      year,
+      monthIndex: index,
+    }));
+
+    const monthMap = new Map<number, MonthReport>(
+      monthOptions.map((item) => [item.monthIndex, item]),
+    );
+
+    return baseline.map((item) => monthMap.get(item.monthIndex) ?? item);
+  }, [availableYears, effectiveSelectedYear, monthOptions]);
 
   const selectedMonthData = useMemo(
     () => monthReports.find((item) => item.key === effectiveSelectedMonthKey),
@@ -206,12 +231,12 @@ const AnalyticsPage = () => {
   );
 
   const monthlyChange = useMemo(() => {
-    const lastMonth = monthlyData[monthlyData.length - 2]?.amount ?? 0;
-    const currentMonth = monthlyData[monthlyData.length - 1]?.amount ?? 0;
+    const lastMonth = monthReports[monthReports.length - 2]?.amount ?? 0;
+    const currentMonth = monthReports[monthReports.length - 1]?.amount ?? 0;
 
     if (!lastMonth) return 0;
     return Math.round(((currentMonth - lastMonth) / lastMonth) * 100);
-  }, [monthlyData]);
+  }, [monthReports]);
 
   const highestCategory = categoryPerformance[0];
   const biggestCategory = highestCategory
@@ -242,33 +267,35 @@ const AnalyticsPage = () => {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          title="Total Spend"
-          value={`₹${totalExpenses.toLocaleString()}`}
-          change={`${transactionCount} transactions`}
+          title="Total spend across all expenses"
+          value={formatCurrency(totalExpenses)}
+          change={`${transactionCount} transactions in your account`}
         />
         <StatCard
-          title="Avg. Daily Spend"
-          value={`₹${averageDailySpend.toLocaleString()}`}
-          change={`${uniqueSpendDays} active days`}
+          title="Average spend per active day"
+          value={formatCurrency(averageDailySpend)}
+          change={`Calculated from ${uniqueSpendDays} days with expenses`}
         />
         <StatCard
-          title="Monthly Change"
+          title="Latest monthly change"
           value={`${monthlyChange >= 0 ? "+" : ""}${monthlyChange}%`}
-          change="vs previous month"
+          change="Most recent month vs the month before it"
         />
         <StatCard
-          title="Avg. Transaction"
-          value={`₹${averageExpense.toLocaleString()}`}
-          change="Per expense"
+          title="Average amount per expense"
+          value={formatCurrency(averageExpense)}
+          change="Total spend divided by all transactions"
         />
       </div>
 
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-slate-400">Monthly reports</p>
+            <p className="text-sm text-slate-400">
+              Filter monthly analysis by year and month
+            </p>
             <h2 className="text-xl font-semibold text-white">
-              Month-wise spending
+              Selected reporting period
             </h2>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -278,24 +305,19 @@ const AnalyticsPage = () => {
                 value={effectiveSelectedYear}
                 onChange={(event) => {
                   setSelectedYear(event.target.value);
-                  const firstMatch = monthReports.find(
-                    (item) => item.year.toString() === event.target.value,
+                  setSelectedMonthKey(
+                    monthsByYear[event.target.value]?.[
+                      monthsByYear[event.target.value].length - 1
+                    ]?.key || "",
                   );
-                  if (firstMatch) {
-                    setSelectedMonthKey(firstMatch.key);
-                  }
                 }}
                 className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white outline-none"
               >
-                {Array.from(
-                  new Set(monthReports.map((item) => item.year.toString())),
-                )
-                  .sort((a, b) => Number(b) - Number(a))
-                  .map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="flex flex-col text-sm text-slate-300">
@@ -305,43 +327,23 @@ const AnalyticsPage = () => {
                 onChange={(event) => setSelectedMonthKey(event.target.value)}
                 className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm text-white outline-none"
               >
-                {monthReports
-                  .filter(
-                    (item) => item.year.toString() === effectiveSelectedYear,
-                  )
-                  .map((item) => (
-                    <option key={item.key} value={item.key}>
-                      {item.month}
-                    </option>
-                  ))}
+                {monthOptions.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.month}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
         </div>
-
-        {/* <div className="grid gap-4 lg:grid-cols-3">
-          {monthReports.map((month) => (
-            <Card key={month.month}>
-              <p className="text-sm text-slate-400">{month.month}</p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                ₹{month.amount.toLocaleString()}
-              </p>
-              <p className="text-sm text-slate-500">
-                {month.change >= 0 ? "+" : ""}
-                {month.change}% from prior month
-              </p>
-              <p className="text-sm text-slate-500">
-                {month.share.toFixed(1)}% of total spend
-              </p>
-            </Card>
-          ))}
-        </div> */}
       </div>
 
       <Card>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-slate-400">Selected month</p>
+            <p className="text-sm text-slate-400">
+              Detailed report for selected month
+            </p>
             <h2 className="text-xl font-semibold text-white">
               {selectedMonthData?.month ?? "No month selected"}
             </h2>
@@ -353,53 +355,65 @@ const AnalyticsPage = () => {
 
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           <StatCard
-            title="Month total"
-            value={`₹${selectedMonthTotal.toLocaleString()}`}
-            change="Total spend"
+            title={`Total spend in ${effectiveMonthLabel}`}
+            value={formatCurrency(selectedMonthTotal)}
+            change="Sum of all expenses in this month"
           />
           <StatCard
-            title="Transactions"
+            title={`Transactions in ${effectiveMonthLabel}`}
             value={selectedMonthTransactions.toString()}
-            change="Expense count"
+            change="Number of expenses recorded"
           />
           <StatCard
-            title="Avg. expense"
-            value={`₹${selectedMonthAvg.toLocaleString()}`}
-            change="Per transaction"
+            title={`Average expense in ${effectiveMonthLabel}`}
+            value={formatCurrency(selectedMonthAvg)}
+            change="Month total divided by transactions"
           />
           <StatCard
-            title="Largest"
-            value={`₹${selectedMonthLargest.amount.toLocaleString()}`}
-            change="Biggest expense"
+            title={`Largest expense in ${effectiveMonthLabel}`}
+            value={formatCurrency(selectedMonthLargest.amount)}
+            change={selectedMonthLargest.title}
           />
         </div>
 
         <div className="mt-6">
-          <p className="text-sm text-slate-400">
-            Selected month category split
-          </p>
-          <div className="mt-6">
-            <ExpensePieChart data={selectedMonthCategoryData} />
-          </div>
+          <ExpensePieChart
+            title={`Category split for ${effectiveMonthLabel}`}
+            description="Shows how the selected month's total spend is distributed across categories."
+            emptyMessage={`No category spending recorded for ${effectiveMonthLabel}.`}
+            data={selectedMonthCategoryData}
+          />
         </div>
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="xl:col-span-2">
-          <MonthlyExpenseChart data={monthlyData} />
+          <MonthlyExpenseChart
+            title={`Monthly spending trend for ${effectiveSelectedYear || "selected year"}`}
+            description="Each bar represents the total amount spent in one calendar month for the selected year."
+            emptyMessage={`No monthly spending recorded for ${effectiveSelectedYear || "this year"}.`}
+            data={yearlyChartData}
+          />
         </div>
 
         <div className="xl:col-span-1 space-y-6">
-          <ExpensePieChart data={categoryData} />
+          <ExpensePieChart
+            title="Category split across all expenses"
+            description="Shows each category's share of your total recorded spending history."
+            emptyMessage="No category spending available yet."
+            data={categoryData}
+          />
         </div>
       </div>
 
       <Card>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-slate-400">Category performance</p>
+            <p className="text-sm text-slate-400">
+              Full history by category
+            </p>
             <h2 className="text-xl font-semibold text-white">
-              Expense breakdown
+              Totals, counts, averages, and share of spend
             </h2>
           </div>
           <span className="rounded-full bg-slate-800 px-3 py-1 text-sm text-slate-300">
@@ -407,12 +421,12 @@ const AnalyticsPage = () => {
           </span>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950">
+        <div className="mt-6 hidden overflow-hidden rounded-lg border border-slate-800 bg-slate-950 md:block">
           <div className="grid grid-cols-12 gap-4 border-b border-slate-800 px-4 py-3 text-sm uppercase tracking-wide text-slate-500">
             <div className="col-span-5">Category</div>
-            <div className="col-span-2 text-right">Total</div>
-            <div className="col-span-2 text-right">Count</div>
-            <div className="col-span-2 text-right">Average</div>
+            <div className="col-span-2 text-right">Total spend</div>
+            <div className="col-span-2 text-right">Transactions</div>
+            <div className="col-span-2 text-right">Avg. spend</div>
             <div className="col-span-1 text-right">Share</div>
           </div>
           {categoryPerformance.map((category) => (
@@ -422,11 +436,11 @@ const AnalyticsPage = () => {
             >
               <div className="col-span-5">{category.name}</div>
               <div className="col-span-2 text-right">
-                ₹{category.total.toLocaleString()}
+                {formatCurrency(category.total)}
               </div>
               <div className="col-span-2 text-right">{category.count}</div>
               <div className="col-span-2 text-right">
-                ₹{category.average.toLocaleString()}
+                {formatCurrency(category.average)}
               </div>
               <div className="col-span-1 text-right">
                 {(category.share * 100).toFixed(1)}%
@@ -434,20 +448,66 @@ const AnalyticsPage = () => {
             </div>
           ))}
         </div>
+
+        <div className="mt-6 space-y-3 md:hidden">
+          {categoryPerformance.length ? (
+            categoryPerformance.map((category) => (
+              <div
+                key={category.name}
+                className="rounded-lg border border-slate-800 bg-slate-950 p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-white">{category.name}</p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {(category.share * 100).toFixed(1)}% of all spending
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-right font-semibold text-white">
+                    {formatCurrency(category.total)}
+                  </p>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg bg-slate-900 p-3">
+                    <p className="text-slate-500">Transactions</p>
+                    <p className="mt-1 font-medium text-slate-200">
+                      {category.count}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-slate-900 p-3">
+                    <p className="text-slate-500">Avg. spend</p>
+                    <p className="mt-1 font-medium text-slate-200">
+                      {formatCurrency(category.average)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950 p-6 text-center text-sm text-slate-400">
+              No category performance data available yet.
+            </div>
+          )}
+        </div>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <p className="text-sm text-slate-400">Biggest transaction</p>
+          <p className="text-sm text-slate-400">
+            Biggest transaction across all expenses
+          </p>
           <p className="mt-2 text-2xl font-semibold text-white">
             {biggestTransaction.title}
           </p>
           <p className="text-sm text-slate-500">
-            ₹{biggestTransaction.amount.toLocaleString()}
+            {formatCurrency(biggestTransaction.amount)}
           </p>
         </Card>
         <Card>
-          <p className="text-sm text-slate-400">Top category</p>
+          <p className="text-sm text-slate-400">
+            Highest spending category across all expenses
+          </p>
           <p className="mt-2 text-2xl font-semibold text-white">
             {biggestCategory}
           </p>

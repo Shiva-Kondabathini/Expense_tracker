@@ -46,13 +46,13 @@ const ExpenseFilters = ({
         placeholder="Search expenses..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="flex-1 min-w-55 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+        className="flex-1 min-w-55 w-full md:w-auto rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
       />
 
       <select
         value={selectedYear}
         onChange={(e) => onYearChange(e.target.value)}
-        className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+        className="w-full md:w-auto rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
       >
         <option value="">All years</option>
         {years.map((year) => (
@@ -65,7 +65,7 @@ const ExpenseFilters = ({
       <select
         value={selectedMonth}
         onChange={(e) => onMonthChange(e.target.value)}
-        className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+        className="w-full md:w-auto rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
       >
         <option value="">All months</option>
         {monthOptions.map((month) => (
@@ -78,7 +78,7 @@ const ExpenseFilters = ({
       <select
         value={selectedCategory}
         onChange={(e) => onCategoryChange(e.target.value)}
-        className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
+        className="w-full md:w-auto rounded-xl border border-slate-700 bg-slate-900 px-4 py-3"
       >
         <option value="">All Categories</option>
 
