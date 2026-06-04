@@ -79,14 +79,14 @@ const LoginPage = () => {
           )}
         </div>
 
-        <div className="text-right">
+        {/* <div className="text-right">
           <Link
             to="/forgot-password"
             className="text-sm font-medium text-blue-400 hover:text-blue-300"
           >
             Forgot password?
           </Link>
-        </div>
+        </div> */}
 
         <button
           type="submit"
