@@ -1,28 +1,13 @@
 import nodemailer from "nodemailer";
 import type Mail from "nodemailer/lib/mailer";
 
-const createSmtpTransporter = () => {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT
-    ? parseInt(process.env.SMTP_PORT, 10)
-    : undefined;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+type EmailResult = { sent: boolean; previewUrl?: string };
 
-  if (!host || !port || !user || !pass) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: {
-      user,
-      pass,
-    },
-  });
-};
+interface EmailPayload {
+  to: string;
+  subject: string;
+  html: string;
+}
 
 const createEtherealTransporter = async () => {
   const testAccount = await nodemailer.createTestAccount();
@@ -38,35 +23,83 @@ const createEtherealTransporter = async () => {
   });
 };
 
-export const sendVerificationEmail = async (
-  to: string,
-  token: string,
-): Promise<{ sent: boolean; previewUrl?: string }> => {
-  let transporter: Mail | null = createSmtpTransporter();
-  let previewUrl: string | undefined;
+const sendWithResend = async ({
+  to,
+  subject,
+  html,
+}: EmailPayload): Promise<boolean> => {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.FROM_EMAIL || "Nakharch <onboarding@resend.dev>";
 
-  if (!transporter) {
-    if (process.env.NODE_ENV === "production") {
-      console.warn("SMTP not configured - skipping email send");
-      return { sent: false };
-    }
-
-    transporter = await createEtherealTransporter();
+  if (!apiKey) {
+    return false;
   }
 
-  const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      html,
+    }),
+  });
 
-  const verifyUrl = `${frontend}/verify/${token}`;
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Resend API failed (${response.status}): ${errorBody}`);
+  }
 
-  const from = process.env.FROM_EMAIL || "noreply@example.com";
+  return true;
+};
 
-  const activeTransporter = transporter;
-  if (!activeTransporter) {
+const sendWithDevelopmentEmail = async ({
+  to,
+  subject,
+  html,
+}: EmailPayload): Promise<EmailResult> => {
+  const transporter: Mail = await createEtherealTransporter();
+
+  const info = await transporter.sendMail({
+    from: process.env.FROM_EMAIL || "noreply@example.com",
+    to,
+    subject,
+    html,
+  });
+
+  const testUrl = nodemailer.getTestMessageUrl(info);
+
+  return { sent: true, previewUrl: testUrl || undefined };
+};
+
+const sendEmail = async (payload: EmailPayload): Promise<EmailResult> => {
+  const sentWithResend = await sendWithResend(payload);
+
+  if (sentWithResend) {
+    return { sent: true };
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    console.warn("RESEND_API_KEY not configured - skipping email send");
     return { sent: false };
   }
 
-  const info = await activeTransporter.sendMail({
-    from,
+  return sendWithDevelopmentEmail(payload);
+};
+
+export const sendVerificationEmail = async (
+  to: string,
+  token: string,
+): Promise<EmailResult> => {
+  const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  const verifyUrl = `${frontend}/verify/${token}`;
+
+  return sendEmail({
     to,
     subject: "Verify your email",
     html: `
@@ -76,44 +109,17 @@ export const sendVerificationEmail = async (
       <p>${verifyUrl}</p>
     `,
   });
-
-  const testUrl = nodemailer.getTestMessageUrl(info);
-  if (testUrl) {
-    previewUrl = testUrl;
-  }
-
-  return { sent: true, previewUrl };
 };
 
 export const sendResetPasswordEmail = async (
   to: string,
   token: string,
-): Promise<{ sent: boolean; previewUrl?: string }> => {
-  let transporter: Mail | null = createSmtpTransporter();
-  let previewUrl: string | undefined;
-
-  if (!transporter) {
-    if (process.env.NODE_ENV === "production") {
-      console.warn("SMTP not configured - skipping email send");
-      return { sent: false };
-    }
-
-    transporter = await createEtherealTransporter();
-  }
-
-  const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
+): Promise<EmailResult> => {
+  const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
 
   const resetUrl = `${frontend}/reset-password/${token}`;
 
-  const from = process.env.FROM_EMAIL || "noreply@example.com";
-
-  const activeTransporter = transporter;
-  if (!activeTransporter) {
-    return { sent: false };
-  }
-
-  const info = await activeTransporter.sendMail({
-    from,
+  return sendEmail({
     to,
     subject: "Reset your password",
     html: `
@@ -125,13 +131,6 @@ export const sendResetPasswordEmail = async (
       <p>If you did not request this, please ignore this email.</p>
     `,
   });
-
-  const testUrl = nodemailer.getTestMessageUrl(info);
-  if (testUrl) {
-    previewUrl = testUrl;
-  }
-
-  return { sent: true, previewUrl };
 };
 
 export default { sendVerificationEmail, sendResetPasswordEmail };
