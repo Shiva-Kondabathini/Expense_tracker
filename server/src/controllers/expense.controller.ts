@@ -33,9 +33,12 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
   try {
     const expenses = await Expense.find({
       userId: req.user?.userId,
-    }).sort({
-      createdAt: -1,
-    });
+    })
+      .select("_id title amount category date createdAt updatedAt")
+      .sort({
+        createdAt: -1,
+      })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -54,7 +57,9 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
     const expense = await Expense.findOneAndDelete({
       _id: req.params.id,
       userId: req.user?.userId,
-    });
+    })
+      .select("_id")
+      .lean();
 
     if (!expense) {
       return res.status(404).json({
@@ -86,7 +91,9 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
       {
         new: true,
       },
-    );
+    )
+      .select("_id title amount category date createdAt updatedAt")
+      .lean();
 
     if (!expense) {
       return res.status(404).json({

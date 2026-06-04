@@ -5,25 +5,44 @@ import type { Expense } from "./types/expense.types";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { getExpenses as fetchExpensesApi } from "./services/expenses.service";
 import { loadExpenses, saveExpenses } from "@/shared/utils/localStorage";
+import type { RootState } from "@/store/store";
 interface ExpenseState {
   expenses: Expense[];
   status: "idle" | "loading" | "failed";
+  lastFetched: number | null;
 }
 
+const EXPENSE_CACHE_MS = 5 * 60 * 1000;
+
+const normalizeExpense = (expense: Expense & { _id?: string }): Expense => ({
+  ...expense,
+  id: expense.id ?? expense._id,
+});
+
 const initialState: ExpenseState = {
-  expenses: loadExpenses() ?? mockExpenses,
+  expenses: (loadExpenses() ?? mockExpenses).map(normalizeExpense),
   status: "idle",
+  lastFetched: null,
 };
 
 export const fetchExpenses = createAsyncThunk(
   "expenses/fetchExpenses",
-  async () => {
+  async (_options: { force?: boolean } | undefined) => {
     const response = await fetchExpensesApi();
 
-    return response.expenses.map((expense: Expense & { _id: string }) => ({
-      ...expense,
-      id: expense._id,
-    }));
+    return response.expenses.map(normalizeExpense);
+  },
+  {
+    condition: (options, { getState }) => {
+      if (options?.force) return true;
+
+      const { expenses } = getState() as RootState;
+      const hasFreshData =
+        expenses.lastFetched &&
+        Date.now() - expenses.lastFetched < EXPENSE_CACHE_MS;
+
+      return expenses.status !== "loading" && !hasFreshData;
+    },
   },
 );
 
@@ -32,7 +51,7 @@ const expenseSlice = createSlice({
   initialState,
   reducers: {
     addExpense: (state, action: PayloadAction<Expense>) => {
-      state.expenses.unshift(action.payload);
+      state.expenses.unshift(normalizeExpense(action.payload));
       saveExpenses(state.expenses);
     },
 
@@ -49,7 +68,7 @@ const expenseSlice = createSlice({
       );
 
       if (index !== -1) {
-        state.expenses[index] = action.payload;
+        state.expenses[index] = normalizeExpense(action.payload);
       }
       saveExpenses(state.expenses);
     },
@@ -62,6 +81,7 @@ const expenseSlice = createSlice({
       .addCase(fetchExpenses.fulfilled, (state, action) => {
         state.expenses = action.payload;
         state.status = "idle";
+        state.lastFetched = Date.now();
         saveExpenses(state.expenses);
       })
       .addCase(fetchExpenses.rejected, (state) => {

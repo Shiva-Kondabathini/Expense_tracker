@@ -1,3 +1,4 @@
+import { memo, useMemo, useState } from "react";
 import type { Expense } from "../types/expense.types";
 
 interface ExpenseTableProps {
@@ -6,7 +7,17 @@ interface ExpenseTableProps {
   onEdit: (expense: Expense) => void;
 }
 
+const INITIAL_VISIBLE_ROWS = 50;
+const ROW_INCREMENT = 50;
+
 const ExpenseTable = ({ expenses, onDelete, onEdit }: ExpenseTableProps) => {
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ROWS);
+  const visibleExpenses = useMemo(
+    () => expenses.slice(0, visibleCount),
+    [expenses, visibleCount],
+  );
+  const hasMoreRows = visibleCount < expenses.length;
+
   return (
     <div>
       {/* Desktop / tablet: table */}
@@ -34,7 +45,7 @@ const ExpenseTable = ({ expenses, onDelete, onEdit }: ExpenseTableProps) => {
                 </td>
               </tr>
             ) : (
-              expenses.map((expense, index) => {
+              visibleExpenses.map((expense, index) => {
                 const expenseId = expense.id ?? expense._id;
                 const rowKey = expenseId ?? `${index}`;
 
@@ -84,7 +95,7 @@ const ExpenseTable = ({ expenses, onDelete, onEdit }: ExpenseTableProps) => {
             No expenses found.
           </div>
         ) : (
-          expenses.map((expense, index) => {
+          visibleExpenses.map((expense, index) => {
             const expenseId = expense.id ?? expense._id;
             const key = expenseId ?? `${index}`;
 
@@ -131,8 +142,22 @@ const ExpenseTable = ({ expenses, onDelete, onEdit }: ExpenseTableProps) => {
           })
         )}
       </div>
+
+      {hasMoreRows && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() =>
+              setVisibleCount((current) => current + ROW_INCREMENT)
+            }
+            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+          >
+            Show more ({expenses.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ExpenseTable;
+export default memo(ExpenseTable);

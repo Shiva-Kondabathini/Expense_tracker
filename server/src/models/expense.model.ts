@@ -33,4 +33,8 @@ const expenseSchema = new Schema(
   },
 );
 
+expenseSchema.index({ userId: 1, createdAt: -1 });
+expenseSchema.index({ userId: 1, category: 1 });
+expenseSchema.index({ userId: 1, date: 1 });
+
 export const Expense = model("Expense", expenseSchema);

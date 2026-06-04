@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import {
   PieChart,
   Pie,
@@ -65,7 +66,10 @@ const ExpensePieChart = ({
   description,
   emptyMessage = "No category spending yet",
 }: ExpensePieChartProps) => {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const total = useMemo(
+    () => data.reduce((sum, item) => sum + item.value, 0),
+    [data],
+  );
 
   return (
     <Card>
@@ -141,4 +145,4 @@ const ExpensePieChart = ({
   );
 };
 
-export default ExpensePieChart;
+export default memo(ExpensePieChart);

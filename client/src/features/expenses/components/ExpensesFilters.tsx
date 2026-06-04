@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ExpenseCategory } from "../types/expense.types";
 
 interface MonthOption {
@@ -92,4 +93,4 @@ const ExpenseFilters = ({
   );
 };
 
-export default ExpenseFilters;
+export default memo(ExpenseFilters);

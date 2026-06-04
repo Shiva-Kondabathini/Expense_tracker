@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -58,6 +58,10 @@ const MonthlyExpenseChart = ({
   const isCompact = chartWidth > 0 && chartWidth < 560;
   const xAxisInterval = isCompact && !isLongSeries && data.length > 6 ? 1 : 0;
   const showBarLabels = !isCompact && !isLongSeries;
+  const monthTick = useMemo(() => renderMonthTick(isCompact), [isCompact]);
+  const handleResize = useCallback((width: number) => {
+    setChartWidth((current) => (current === width ? current : width));
+  }, []);
 
   return (
     <Card>
@@ -81,7 +85,7 @@ const MonthlyExpenseChart = ({
             <ResponsiveContainer
               width="100%"
               height="100%"
-              onResize={(width) => setChartWidth(width)}
+              onResize={handleResize}
             >
               <BarChart
                 data={data}
@@ -95,7 +99,7 @@ const MonthlyExpenseChart = ({
                 <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="month"
-                  tick={renderMonthTick(isCompact)}
+                  tick={monthTick}
                   interval={xAxisInterval}
                   height={isCompact ? 42 : 60}
                   axisLine={false}
@@ -145,4 +149,4 @@ const MonthlyExpenseChart = ({
   );
 };
 
-export default MonthlyExpenseChart;
+export default memo(MonthlyExpenseChart);

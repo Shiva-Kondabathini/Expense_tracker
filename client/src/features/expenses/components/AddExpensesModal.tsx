@@ -1,10 +1,9 @@
 import { useForm } from "react-hook-form";
-import toast from "react-hot-toast";
 import type { Expense, ExpenseCategory } from "../types/expense.types";
 
 interface AddExpenseModalProps {
   onClose: () => void;
-  onSubmit: (expense: Expense) => void;
+  onSubmit: (expense: Expense) => Promise<void>;
 
   expense?: Expense;
   isEditMode?: boolean;
@@ -47,18 +46,12 @@ const AddExpenseModal = ({
         }
       : undefined,
   });
-  const submitHandler = (data: ExpenseFormData) => {
-    onSubmit({
+  const submitHandler = async (data: ExpenseFormData) => {
+    await onSubmit({
       id: expense?.id ?? crypto.randomUUID(),
       ...data,
     });
-    toast.success(
-      isEditMode
-        ? "Expense updated successfully"
-        : "Expense added successfully",
-    );
     reset();
-    onClose();
   };
 
   return (

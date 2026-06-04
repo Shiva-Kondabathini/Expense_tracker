@@ -96,7 +96,7 @@ const DashboardPage = () => {
     dispatch(fetchExpenses());
   }, [dispatch]);
 
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const currentMonthKey = getMonthKey(now);
   const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const previousMonthKey = getMonthKey(previousMonthDate);

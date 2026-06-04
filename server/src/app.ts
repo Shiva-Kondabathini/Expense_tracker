@@ -7,7 +7,8 @@ const app = express();
 
 app.use(cors());
 
-app.use(express.json());
+app.set("etag", "strong");
+app.use(express.json({ limit: "32kb" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);

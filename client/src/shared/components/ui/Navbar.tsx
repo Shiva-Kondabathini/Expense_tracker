@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiLogOut } from "react-icons/fi";
 import { logout } from "@/features/auth/authSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { menus } from "./Sidebar";
@@ -9,7 +8,6 @@ const Navbar = () => {
   const dispatch = useAppDispatch();
 
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -21,16 +19,16 @@ const Navbar = () => {
     <header className="border-b border-slate-800 bg-slate-950">
       <div className="flex h-16 items-center justify-between px-4 md:px-8">
         <div className="flex items-center gap-4">
-          <button
-            className="md:hidden p-2 text-slate-300"
-            onClick={() => setOpen((s) => !s)}
-            aria-label="Toggle menu"
-          >
-            {open ? <FiX size={20} /> : <FiMenu size={20} />}
-          </button>
-
           <h2 className="text-xl font-semibold">NaKharch</h2>
         </div>
+
+        <button
+          onClick={handleLogout}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 text-slate-300 transition hover:border-red-500/60 hover:bg-red-500/10 hover:text-red-200 md:hidden"
+          aria-label="Logout"
+        >
+          <FiLogOut size={18} />
+        </button>
 
         <div className="hidden md:flex items-center gap-4">
           <button
@@ -42,43 +40,30 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile topbar menu: shows nav items horizontally when toggled */}
-      {open && (
-        <nav className="md:hidden border-t border-slate-800 bg-slate-950">
-          <div className="flex overflow-x-auto px-4 py-3 gap-2">
-            {menus.map((menu) => {
-              const Icon = menu.icon;
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          {menus.map((menu) => {
+            const Icon = menu.icon;
 
-              return (
-                <NavLink
-                  key={menu.path}
-                  to={menu.path}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-lg px-3 py-2 transition whitespace-nowrap ${
-                      isActive
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-white"
-                    }`
-                  }
-                >
-                  <Icon size={16} />
-                  <span>{menu.label}</span>
-                </NavLink>
-              );
-            })}
-            <button
-              onClick={() => {
-                setOpen(false);
-                handleLogout();
-              }}
-              className="ml-2 rounded-lg bg-red-600 px-3 py-2"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      )}
+            return (
+              <NavLink
+                key={menu.path}
+                to={menu.path}
+                className={({ isActive }) =>
+                  `flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-medium transition ${
+                    isActive
+                      ? "bg-slate-800 text-white"
+                      : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                  }`
+                }
+              >
+                <Icon size={18} />
+                <span>{menu.label}</span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
     </header>
   );
 };

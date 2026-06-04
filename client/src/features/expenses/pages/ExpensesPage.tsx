@@ -1,15 +1,28 @@
 import ExpenseTable from "../components/ExpenseTable";
 import toast from "react-hot-toast";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import ExpenseFilters from "../components/ExpensesFilters";
 import AddExpenseModal from "../components/AddExpensesModal";
 
 import type { Expense } from "../types/expense.types";
 import ConfirmDialog from "@/shared/components/ui/ConfirmDialog";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  addExpense,
+  deleteExpense,
+  fetchExpenses,
+  updateExpense,
+} from "../expensesSlice";
+import { selectExpenses } from "../selectors";
 
 import {
-  getExpenses,
   createExpense,
   updateExpense as updateExpenseApi,
   deleteExpense as deleteExpenseApi,
@@ -31,10 +44,11 @@ const MONTHS = [
 ];
 
 const ExpensesPage = () => {
-  const [apiExpenses, setApiExpenses] = useState<Expense[]>([]);
-  const expenses = apiExpenses;
+  const dispatch = useAppDispatch();
+  const expenses = useAppSelector(selectExpenses);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
     null,
@@ -43,65 +57,49 @@ const ExpensesPage = () => {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
 
-  const loadExpenses = async () => {
-    try {
-      const response = await getExpenses();
-
-      setApiExpenses(
-        response.expenses.map((expense: Expense & { _id: string }) => ({
-          ...expense,
-          id: expense._id,
-        })),
-      );
-    } catch {
-      toast.error("Failed to load expenses");
-    }
-  };
-
   useEffect(() => {
-    void (async () => {
-      await loadExpenses();
-    })();
-  }, []);
+    dispatch(fetchExpenses());
+  }, [dispatch]);
 
-  const handleDeleteExpense = async () => {
+  const handleDeleteExpense = useCallback(async () => {
     if (!selectedExpenseId) return;
 
     try {
       await deleteExpenseApi(selectedExpenseId);
 
+      dispatch(deleteExpense(selectedExpenseId));
       toast.success("Expense deleted successfully");
-
-      await loadExpenses();
-
       setSelectedExpenseId(null);
     } catch {
       toast.error("Failed to delete expense");
     }
-  };
-  const handleEditExpense = (expense: Expense) => {
+  }, [dispatch, selectedExpenseId]);
+
+  const handleEditExpense = useCallback((expense: Expense) => {
     setEditingExpense(expense);
-  };
-  const handleSaveExpense = async (expense: Expense) => {
+  }, []);
+
+  const handleSaveExpense = useCallback(async (expense: Expense) => {
     try {
       if (editingExpense) {
-        await updateExpenseApi(expense.id!, expense);
+        const response = await updateExpenseApi(expense.id!, expense);
 
+        dispatch(updateExpense({ ...response.expense, id: response.expense._id }));
         toast.success("Expense updated successfully");
       } else {
-        await createExpense(expense);
+        const response = await createExpense(expense);
 
+        dispatch(addExpense({ ...response.expense, id: response.expense._id }));
         toast.success("Expense added successfully");
       }
-
-      await loadExpenses();
 
       setEditingExpense(null);
       setIsModalOpen(false);
     } catch {
       toast.error("Failed to save expense");
+      throw new Error("Failed to save expense");
     }
-  };
+  }, [dispatch, editingExpense]);
 
   const years = useMemo(
     () =>
@@ -136,26 +134,35 @@ const ExpensesPage = () => {
       .map((month) => ({ value: month.toString(), label: MONTHS[month] }));
   }, [expenses, selectedYear]);
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch = expense.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+  const filteredExpenses = useMemo(() => {
+    const search = deferredSearchTerm.trim().toLowerCase();
 
-    const matchesCategory =
-      !selectedCategory || expense.category === selectedCategory;
+    return expenses.filter((expense) => {
+      const matchesSearch =
+        !search || expense.title.toLowerCase().includes(search);
 
-    const date = new Date(expense.date);
-    const matchesYear =
-      !selectedYear ||
-      (!Number.isNaN(date.getTime()) &&
-        date.getFullYear().toString() === selectedYear);
-    const matchesMonth =
-      !selectedMonth ||
-      (!Number.isNaN(date.getTime()) &&
-        date.getMonth().toString() === selectedMonth);
+      const matchesCategory =
+        !selectedCategory || expense.category === selectedCategory;
 
-    return matchesSearch && matchesCategory && matchesYear && matchesMonth;
-  });
+      const date = new Date(expense.date);
+      const matchesYear =
+        !selectedYear ||
+        (!Number.isNaN(date.getTime()) &&
+          date.getFullYear().toString() === selectedYear);
+      const matchesMonth =
+        !selectedMonth ||
+        (!Number.isNaN(date.getTime()) &&
+          date.getMonth().toString() === selectedMonth);
+
+      return matchesSearch && matchesCategory && matchesYear && matchesMonth;
+    });
+  }, [
+    deferredSearchTerm,
+    expenses,
+    selectedCategory,
+    selectedMonth,
+    selectedYear,
+  ]);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
