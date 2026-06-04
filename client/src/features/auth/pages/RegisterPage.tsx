@@ -14,8 +14,6 @@ interface RegisterFormData {
 const RegisterPage = () => {
   const navigate = useNavigate();
 
-  // no dispatch needed; registration requires email verification
-
   const { register, handleSubmit } = useForm<RegisterFormData>();
 
   const onSubmit = async (data: RegisterFormData) => {
@@ -23,9 +21,6 @@ const RegisterPage = () => {
       const response = await registerUser(data);
 
       toast.success(response.message || "Registration successful");
-      if (response.emailPreviewUrl) {
-        toast.success(`Preview email: ${response.emailPreviewUrl}`);
-      }
 
       navigate("/login");
     } catch (error) {

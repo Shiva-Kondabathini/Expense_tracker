@@ -5,7 +5,6 @@ import PublicRoute from "./PublicRoutes";
 
 const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/RegisterPage"));
-const VerifyPage = lazy(() => import("@/features/auth/pages/VerifyPage"));
 const ForgotPasswordPage = lazy(
   () => import("@/features/auth/pages/ForgotPasswordPage"),
 );
@@ -49,15 +48,6 @@ export const AppRoutes = () => {
             element={
               <PublicRoute>
                 <RegisterPage />
-              </PublicRoute>
-            }
-          />
-
-          <Route
-            path="/verify/:token"
-            element={
-              <PublicRoute>
-                <VerifyPage />
               </PublicRoute>
             }
           />

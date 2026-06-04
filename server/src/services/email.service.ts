@@ -91,26 +91,6 @@ const sendEmail = async (payload: EmailPayload): Promise<EmailResult> => {
   return sendWithDevelopmentEmail(payload);
 };
 
-export const sendVerificationEmail = async (
-  to: string,
-  token: string,
-): Promise<EmailResult> => {
-  const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
-
-  const verifyUrl = `${frontend}/verify/${token}`;
-
-  return sendEmail({
-    to,
-    subject: "Verify your email",
-    html: `
-      <p>Please verify your email by clicking the link below:</p>
-      <p><a href="${verifyUrl}">Verify Email</a></p>
-      <p>If the link doesn't work, copy and paste this URL into your browser:</p>
-      <p>${verifyUrl}</p>
-    `,
-  });
-};
-
 export const sendResetPasswordEmail = async (
   to: string,
   token: string,
@@ -133,4 +113,4 @@ export const sendResetPasswordEmail = async (
   });
 };
 
-export default { sendVerificationEmail, sendResetPasswordEmail };
+export default { sendResetPasswordEmail };
