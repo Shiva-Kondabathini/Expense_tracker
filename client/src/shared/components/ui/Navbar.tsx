@@ -1,6 +1,7 @@
 import { useNavigate, NavLink } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
 import { logout } from "@/features/auth/authSlice";
+import { resetExpenses } from "@/features/expenses/expensesSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { menus } from "./Sidebar";
 
@@ -10,6 +11,7 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    dispatch(resetExpenses());
     dispatch(logout());
 
     navigate("/login");

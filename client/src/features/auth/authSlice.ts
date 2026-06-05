@@ -1,6 +1,11 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AuthState, User } from "./types/auth.types";
-import { loadUser, saveUser, clearUser } from "@/shared/utils/authStore";
+import {
+  clearToken,
+  clearUser,
+  loadUser,
+  saveUser,
+} from "@/shared/utils/authStore";
 
 const storedUser = loadUser();
 
@@ -24,6 +29,7 @@ const authSlice = createSlice({
 
       state.isAuthenticated = false;
       clearUser();
+      clearToken();
     },
   },
 });

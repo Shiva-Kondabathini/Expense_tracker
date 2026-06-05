@@ -15,3 +15,7 @@ export const saveExpenses = (expenses: unknown) => {
     console.error(error);
   }
 };
+
+export const clearExpenses = () => {
+  localStorage.removeItem("nakharch-expenses");
+};

@@ -50,8 +50,12 @@ const AnalyticsPage = () => {
 
   const uniqueSpendDays = useMemo(
     () =>
-      new Set(expenses.map((expense) => new Date(expense.date).toDateString()))
-        .size,
+      new Set(
+        expenses
+          .map((expense) => new Date(expense.date))
+          .filter((date) => !Number.isNaN(date.getTime()))
+          .map((date) => date.toDateString()),
+      ).size,
     [expenses],
   );
 

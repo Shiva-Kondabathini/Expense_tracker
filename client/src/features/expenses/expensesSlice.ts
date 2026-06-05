@@ -4,7 +4,11 @@ import { mockExpenses } from "./mockData";
 import type { Expense } from "./types/expense.types";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { getExpenses as fetchExpensesApi } from "./services/expenses.service";
-import { loadExpenses, saveExpenses } from "@/shared/utils/localStorage";
+import {
+  clearExpenses,
+  loadExpenses,
+  saveExpenses,
+} from "@/shared/utils/localStorage";
 import type { RootState } from "@/store/store";
 interface ExpenseState {
   expenses: Expense[];
@@ -72,6 +76,12 @@ const expenseSlice = createSlice({
       }
       saveExpenses(state.expenses);
     },
+    resetExpenses: (state) => {
+      state.expenses = [];
+      state.status = "idle";
+      state.lastFetched = null;
+      clearExpenses();
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -90,6 +100,6 @@ const expenseSlice = createSlice({
   },
 });
 
-export const { addExpense, deleteExpense, updateExpense } =
+export const { addExpense, deleteExpense, resetExpenses, updateExpense } =
   expenseSlice.actions;
 export default expenseSlice.reducer;

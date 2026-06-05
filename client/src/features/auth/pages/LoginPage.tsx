@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 
 import { login } from "../authSlice";
+import { resetExpenses } from "@/features/expenses/expensesSlice";
 
 import { useAppDispatch } from "@/store/hooks";
 import toast from "react-hot-toast";
@@ -32,6 +33,7 @@ const LoginPage = () => {
 
       saveToken(response.token);
 
+      dispatch(resetExpenses());
       dispatch(login(response.user));
 
       toast.success("Login successful");
