@@ -14,5 +14,10 @@ app.use(express.json({ limit: "32kb" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/categories", categoryRoutes);
-
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Nakharch API is running",
+  });
+});
 export default app;
