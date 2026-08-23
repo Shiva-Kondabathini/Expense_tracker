@@ -43,7 +43,7 @@ const Navbar = () => {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {menus.map((menu) => {
             const Icon = menu.icon;
 

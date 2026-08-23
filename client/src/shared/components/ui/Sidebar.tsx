@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-import { FiHome, FiDollarSign, FiBarChart2 } from "react-icons/fi";
+import { FiHome, FiDollarSign } from "react-icons/fi";
 
 export const menus = [
   {
@@ -12,12 +12,6 @@ export const menus = [
     label: "Expenses",
     path: "/expenses",
     icon: FiDollarSign,
-  },
-
-  {
-    label: "Analytics",
-    path: "/analytics",
-    icon: FiBarChart2,
   },
 ];
 
