@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 
-import { FiHome, FiDollarSign } from "react-icons/fi";
+import { FiHome } from "react-icons/fi";
+import { FaRupeeSign } from "react-icons/fa";
 
 export const menus = [
   {
@@ -11,7 +12,7 @@ export const menus = [
   {
     label: "Expenses",
     path: "/expenses",
-    icon: FiDollarSign,
+    icon: FaRupeeSign,
   },
 ];
 
